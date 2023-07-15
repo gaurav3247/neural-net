@@ -1,43 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-class Neuron:
-    def __init__(self, weights, bias):
-        weights_ = np.array(weights)
-        self.weights = weights_.reshape((len(weights), 1))
-        # print(self.weights.shape)
-        self.bias = bias
-        self.output = None
-
-    def activation_function(self, x):
-        return x
-
-    def activation_function_derivative(self, x):
-        return 1
-
-    def calculate_output(self, inputs):
-        self.output = self.activation_function(np.dot(inputs, self.weights) + self.bias)
-
-    def get_output(self):
-        return self.output
-
-
-class SigmoidNeuron(Neuron):
-    def activation_function(self, x):
-        return 1 / (1 + np.exp(-x))
-
-    def activation_function_derivative(self, x):
-        return self.activation_function(x) * (1 - self.activation_function(x))
-
-
-class ReLUNeuron(Neuron):
-    def activation_function(self, x):
-        return max(0, x)
-
-    def activation_function_derivative(self, x):
-        if x > 0:
-            return 1
-        return 0
 
 class HiddenLayer:
     def __init__(self, num_inputs, num_neurons):
@@ -92,13 +55,9 @@ class NeuralNetwork:
         return self.output
 
 if __name__ == '__main__':
-    inputs = [[.001, .002, .003, .0025],
-              [2, 5, -1, 2],
-              [-1.5, 2.7, 3.3, -0.8]]
-    # inputs = [[1, 2, -1.5],
-    #           [2, 5, 2.7],
-    #           [3, -1, 3.3],
-    #           [2.5, 2, -0.8]]
+    inputs = [[2, 3, 4, 5],
+              [1234, 4000, -2, 8],
+              [10, 25, 50, 51]]
 
     h1 = HiddenLayer(4, 3)
     h2 = ReLULayer(3, 4)
