@@ -101,8 +101,8 @@ class NeuralNetwork:
             self.backpropagation(self.y_train)
             self.update_weights(learning_rate)
 
-    def make_prediction(self, X):
-        self.forward(X)
+    def make_prediction(self, X): #!! Change/fix code. make_prediction takes single data point, not entire dataset
+        self.forward(X) # Do not call self.forward(self.X) here
         return self.output
 
 if __name__ == '__main__':
