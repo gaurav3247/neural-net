@@ -18,8 +18,11 @@ class HiddenLayer:
     def assign_inputs(self, inputs):
         self.inputs = np.array(inputs)
 
-    def calculate_outputs(self):
-        self.outputs = self.activation_function(np.dot(self.weights, self.inputs) + self.biases)
+    def calculate_outputs(self, training=False):
+        if training:
+            self.outputs = self.activation_function(np.dot(self.weights, self.inputs) + self.biases)
+        else:
+            self.outputs = self.activation_function(np.dot(self.inputs, self.weights) + self.biases)
 
     def get_outputs(self):
         return self.outputs
@@ -58,7 +61,7 @@ class NeuralNetwork:
     def forward(self, X):
         for layer in self.hidden_layers:
             layer.assign_inputs(X)
-            layer.calculate_outputs()
+            layer.calculate_outputs(training=True)
             X = layer.get_outputs()
         
         self.output = self.softmax(X)
@@ -77,7 +80,7 @@ class NeuralNetwork:
         return cost
 
     def backpropagation(self, y):
-        m = self.inputs.shape[1]
+        m = self.X_train.shape[1]
         dz2 = self.output - y
         dw2 = 1/m * np.dot(dz2, self.hidden_layers[1].outputs.T)
         db2 = 1/m * np.sum(dz2, axis=1, keepdims=True)
@@ -95,7 +98,7 @@ class NeuralNetwork:
             layer.weights -= learning_rate * layer.dw
             layer.biases -= learning_rate * layer.db
 
-    def gradient_descent(self, learning_rate, num_iterations):
+    def train_model(self, learning_rate, num_iterations):
         for i in range(num_iterations):
             self.forward(self.X_train)
             self.backpropagation(self.y_train)
@@ -105,19 +108,47 @@ class NeuralNetwork:
         self.forward(X) # Do not call self.forward(self.X) here
         return self.output
 
+
+def read_data(file):
+    line = file.readline()
+    line = file.readline()
+    arr = line.split(',')
+    num_features = len(arr) - 1
+    first = np.array([1] + arr[:-1]).astype(float)
+    t_arr = [float(arr[-1])]
+    line = file.readline()
+    data_points = [first]
+    while line:
+        arr_ = line.split(',')
+        x = np.array([1] + arr_[:-1]).astype(float)
+        data_points.append(x)
+        t_arr.append(arr_[-1].strip())
+        line = file.readline()
+
+    X = np.stack(data_points, axis=1)
+    t = np.array(t_arr).astype(float)
+    t = t.reshape((t.shape[0], 1))
+    return X, t
+
+
 if __name__ == '__main__':
-    inputs = [[2, 3, 4, 5],
-              [-1234, 4000, -2, 8],
-              [10, 25, 50, 51]]
-    inputs = np.array(inputs).T
+    file = open('./Fish.csv', 'r')
+    X, t = read_data(file)
+    # print(X.shape)
+    nn = NeuralNetwork([ReLULayer(7, 4), SigmoidLayer(4, 2)])
+    nn.assign_training_data(X, t)
+    nn.train_model(0.01, 1000)
+    # inputs = [[2, 3, 4, 5],
+    #           [-1234, 4000, -2, 8],
+    #           [10, 25, 50, 51]]
+    # inputs = np.array(inputs).T
 
-    h1 = ReLULayer(4, 3)
-    h2 = SigmoidLayer(3, 3)
-    # h3 = SigmoidLayer(4, 2)
+    # h1 = ReLULayer(4, 3)
+    # h2 = SigmoidLayer(3, 3)
 
-    nn = NeuralNetwork([h1, h2])
-    nn.assign_inputs(inputs)
-    nn.forward(inputs)
-    print(nn.get_outputs())
-    nn.backpropagation(np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]))
-    print(nn.calculate_cost(np.array([[1, 0, 0], [1, 0, 0], [0, 0, 1]])))
+    # nn = NeuralNetwork([h1, h2])
+    # nn.assign_inputs(inputs)
+    # nn.forward(inputs)
+    # print(nn.get_outputs())
+    # nn.backpropagation(np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]))
+    # print(nn.calculate_cost(np.array([[1, 0, 0], [1, 0, 0], [0, 0, 1]])))
