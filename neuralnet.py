@@ -1,11 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 class HiddenLayer:
     def __init__(self, num_inputs, num_neurons):
-        self.weights = np.random.rand(num_neurons, num_inputs)
-        self.biases = np.random.rand(num_neurons, 1)
+        self.weights = np.random.randn(num_neurons, num_inputs) * 0.01
+        self.biases = np.random.randn(num_neurons, 1) * 0.01
+        self.inputs, self.outputs = None, None
         self.dw = np.zeros(self.weights.shape)
         self.db = np.zeros(self.biases.shape)
 
@@ -16,13 +18,10 @@ class HiddenLayer:
         return 1
 
     def assign_inputs(self, inputs):
-        self.inputs = np.array(inputs)
+        self.inputs = inputs
 
-    def calculate_outputs(self, training=False):
-        if training:
-            self.outputs = self.activation_function(np.dot(self.weights, self.inputs) + self.biases)
-        else:
-            self.outputs = self.activation_function(np.dot(self.inputs, self.weights) + self.biases)
+    def calculate_outputs(self):
+        self.outputs = self.activation_function(np.dot(self.weights, self.inputs) + self.biases)
 
     def get_outputs(self):
         return self.outputs
@@ -50,44 +49,42 @@ class NeuralNetwork:
         self.output = None
         self.X_train = None
         self.y_train = None
+        self.y_hat = None
 
     def assign_training_data(self, X_train, y_train):
         self.X_train = X_train
         self.y_train = y_train
 
-    def assign_inputs(self, inputs):
-        self.inputs = np.array(inputs)
-
     def forward(self, X):
         for layer in self.hidden_layers:
+            print(X[:10])
             layer.assign_inputs(X)
-            layer.calculate_outputs(training=True)
+            layer.calculate_outputs()
             X = layer.get_outputs()
-        
-        self.output = self.softmax(X)
+
+        self.y_hat = self.softmax(X)
 
     def softmax(self, x):
-        arr_ = np.sum(np.exp(x), axis=0)
-        return np.exp(x) / arr_
+        return np.exp(x) / np.sum(np.exp(x))
 
     def get_outputs(self):
         return self.output
 
     def calculate_cost(self, y):
         m = self.inputs.shape[1]
-        total_loss = np.sum(y * np.log(self.output))
+        total_loss = np.sum(y * np.log(self.y_hat))
         cost = -1/m * total_loss
         return cost
 
     def backpropagation(self, y):
         m = self.X_train.shape[1]
-        dz2 = self.output - y
+        dz2 = self.y_hat - y
         dw2 = 1/m * np.dot(dz2, self.hidden_layers[1].outputs.T)
         db2 = 1/m * np.sum(dz2, axis=1, keepdims=True)
 
         g1_prime = self.hidden_layers[0].activation_function_derivative(self.hidden_layers[0].outputs)
         dz1 = np.dot(self.hidden_layers[1].weights.T, dz2) * g1_prime
-        dw1 = 1/m * np.dot(dz1, self.inputs.T)
+        dw1 = 1/m * np.dot(dz1, self.X_train.T)
         db1 = 1/m * np.sum(dz1, axis=1, keepdims=True)
 
         self.hidden_layers[1].dw, self.hidden_layers[1].db = dw2, db2
@@ -100,55 +97,47 @@ class NeuralNetwork:
 
     def train_model(self, learning_rate, num_iterations):
         for i in range(num_iterations):
+            print(i+1)
             self.forward(self.X_train)
             self.backpropagation(self.y_train)
             self.update_weights(learning_rate)
 
-    def make_prediction(self, X): #!! Change/fix code. make_prediction takes single data point, not entire dataset
-        self.forward(X) # Do not call self.forward(self.X) here
+    def make_prediction(self, x): #!! Change/fix code. make_prediction takes single data point, not entire dataset
+        # self.forward(x) # Do not call self.forward(self.X) here
+        for layer in self.hidden_layers:
+            layer.assign_inputs(x)
+            layer.calculate_outputs()
+            x = layer.get_outputs()
+
+        self.output = self.softmax(x)
         return self.output
 
-
-def read_data(file):
-    line = file.readline()
-    line = file.readline()
-    arr = line.split(',')
-    num_features = len(arr) - 1
-    first = np.array([1] + arr[:-1]).astype(float)
-    t_arr = [float(arr[-1])]
-    line = file.readline()
-    data_points = [first]
-    while line:
-        arr_ = line.split(',')
-        x = np.array([1] + arr_[:-1]).astype(float)
-        data_points.append(x)
-        t_arr.append(arr_[-1].strip())
-        line = file.readline()
-
-    X = np.stack(data_points, axis=1)
-    t = np.array(t_arr).astype(float)
-    t = t.reshape((t.shape[0], 1))
-    return X, t
-
+def make_one_hot(y):
+    one_hot = np.zeros((y.size, y.max()+1))
+    one_hot[np.arange(y.size), y] = 1
+    return one_hot.T
 
 if __name__ == '__main__':
-    file = open('./Fish.csv', 'r')
-    X, t = read_data(file)
-    # print(X.shape)
-    nn = NeuralNetwork([ReLULayer(7, 4), SigmoidLayer(4, 2)])
-    nn.assign_training_data(X, t)
-    nn.train_model(0.01, 1000)
+    data = pd.read_csv('./emnist-mnist-train.csv', header=None)
+    data_arr = np.array(data)
+    np.random.shuffle(data_arr)
+
+    X_train, X_test = data_arr[:25000].T, data_arr[25000: 30000].T
+    y_train_, y_test_ = np.reshape(X_train[0], (X_train[0].shape[0], 1)).T, np.reshape(X_test[0], (X_test[0].shape[0], 1)).T
+    y_train, y_test = make_one_hot(y_train_), make_one_hot(y_test_)
+    X_train, X_test = X_train[1:], X_test[1:]
+
+    nn = NeuralNetwork([ReLULayer(784, 10), ReLULayer(10, 10)])
+    nn.assign_training_data(X_train, y_train)
+    nn.train_model(0.01, 250)
+
+    test_pred = nn.make_prediction(X_test)
+    print(test_pred.shape, y_test.shape)
+    print(test_pred[:10].max(axis=0))
+    print(test_pred[:10])
+    print(y_test[:10])
+
     # inputs = [[2, 3, 4, 5],
     #           [-1234, 4000, -2, 8],
     #           [10, 25, 50, 51]]
     # inputs = np.array(inputs).T
-
-    # h1 = ReLULayer(4, 3)
-    # h2 = SigmoidLayer(3, 3)
-
-    # nn = NeuralNetwork([h1, h2])
-    # nn.assign_inputs(inputs)
-    # nn.forward(inputs)
-    # print(nn.get_outputs())
-    # nn.backpropagation(np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]))
-    # print(nn.calculate_cost(np.array([[1, 0, 0], [1, 0, 0], [0, 0, 1]])))
