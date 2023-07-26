@@ -51,13 +51,15 @@ class NeuralNetwork:
         self.y_train = None
         self.y_hat = None
 
-    def assign_training_data(self, X_train, y_train):
-        self.X_train = X_train
+    def assign_training_data(self, X_train, y_train, normalize=False):
+        if normalize:
+            self.X_train = self.normalize(X_train)
+        else:
+            self.X_train = X_train
         self.y_train = y_train
 
     def forward(self, X):
         for layer in self.hidden_layers:
-            print(X[:10])
             layer.assign_inputs(X)
             layer.calculate_outputs()
             X = layer.get_outputs()
@@ -65,7 +67,7 @@ class NeuralNetwork:
         self.y_hat = self.softmax(X)
 
     def softmax(self, x):
-        return np.exp(x) / np.sum(np.exp(x))
+        return np.exp(x) / np.sum(np.exp(x), axis=0)
 
     def get_outputs(self):
         return self.output
@@ -97,10 +99,18 @@ class NeuralNetwork:
 
     def train_model(self, learning_rate, num_iterations):
         for i in range(num_iterations):
-            print(i+1)
+            print("Iterarion: ", i+1)
             self.forward(self.X_train)
             self.backpropagation(self.y_train)
             self.update_weights(learning_rate)
+
+    def normalize(self, X):
+        mean = np.mean(X, axis=0, keepdims=True)
+        std = np.std(X, axis=0, keepdims=True)
+        return (X - mean) / std
+
+    def sgd(self, learning_rate, num_iterations):
+        pass
 
     def make_prediction(self, x): #!! Change/fix code. make_prediction takes single data point, not entire dataset
         # self.forward(x) # Do not call self.forward(self.X) here
@@ -129,14 +139,17 @@ if __name__ == '__main__':
 
     nn = NeuralNetwork([ReLULayer(784, 10), ReLULayer(10, 10)])
     nn.assign_training_data(X_train, y_train)
-    nn.train_model(0.01, 250)
+    nn.train_model(0.01, 150)
 
-    test_pred = nn.make_prediction(X_test)
-    print(test_pred.shape, y_test.shape)
+    nn.forward(X_test)
+    test_pred = nn.y_hat
+    print(test_pred[0].shape, y_test[0].shape)
     print(test_pred[:10].max(axis=0))
-    print(test_pred[:10])
-    print(y_test[:10])
+    print("Prediction: ", test_pred[:10].argmax(axis=0))
+    print("Actual: ", y_test[:10].argmax(axis=0))
 
+    acc = np.sum(test_pred.argmax(axis=0) == y_test.argmax(axis=0)) / y_test.shape[1]
+    print(f"Accuracy: {acc*100}%")
     # inputs = [[2, 3, 4, 5],
     #           [-1234, 4000, -2, 8],
     #           [10, 25, 50, 51]]
