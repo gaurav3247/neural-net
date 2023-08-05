@@ -123,7 +123,7 @@ class NeuralNetwork:
         self.hidden_layers[0].dB = 1/m * np.sum(self.hidden_layers[0].dZ, axis=1, keepdims=True)
 
     def update_weights(self, learning_rate, beta_1, beta_2):
-        epsilon=10 ** -8
+        epsilon = 10 ** -8
         for layer in self.hidden_layers:
             # layer.vt_w = beta_2 * layer.vt_w + (1 - beta_2) * np.square(layer.dW)
             # layer.vt_b = beta_2 * layer.vt_b + (1 - beta_2) * np.square(layer.dB)
