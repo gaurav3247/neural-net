@@ -143,7 +143,7 @@ class NeuralNetwork:
         if training_type == 'gradient descent':
             self.gradient_descent(learning_rate, num_iterations, momentum, ada_grad)
         elif training_type == 'sgd':
-            self.sgd(learning_rate, num_iterations, 100, momentum)
+            self.sgd(learning_rate, num_iterations, momentum, ada_grad)
         elif training_type == 'mini batch':
             batch_size = int(input("Enter batch size: "))
             self.mini_batch_gd(learning_rate, num_iterations, momentum, ada_grad, batch_size)
@@ -192,18 +192,20 @@ class NeuralNetwork:
                 self.update_weights(learning_rate, momentum, ada_grad)
                 print("Cost :", self.calculate_cost(X_mini, y_mini))
 
-    def sgd(self, learning_rate, num_iterations):
+    def sgd(self, learning_rate, num_iterations, momentum, ada_grad):
         m = self.X_train.shape[1]
 
         for i in range(num_iterations):
             print("Iteration: ", i+1)
+            cost = 0
             for j in range(m):
                 X_mini = self.X_train[:, j].reshape(-1, 1)
                 y_mini = self.y_train[:, j].reshape(-1, 1)
-                self.forward(X_mini)
                 self.backpropagation(X_mini, y_mini)
-                self.update_weights(learning_rate, 0, 0)
-                print("Cost :", self.calculate_cost(X_mini, y_mini))
+                self.update_weights(learning_rate, momentum, ada_grad)
+                cost += self.calculate_cost(X_mini, y_mini)
+            print("Cost :", cost/m)
+
 
 
 def make_one_hot(y):
@@ -223,7 +225,7 @@ if __name__ == '__main__':
     print(X_train.shape)
     nn = NeuralNetwork([ReLULayer(784, 10)], num_classes=10)
     nn.assign_training_data(X_train, y_train)
-    nn.train_model('gradient descent', 125, 0.01, momentum=0.9, ada_grad=0.9)
+    nn.train_model('sgd', 10, 0.01, momentum=0.9, ada_grad=0.9)
 
     nn.forward(X_test)
     test_pred = nn.y_hat
