@@ -201,11 +201,11 @@ class NeuralNetwork:
             for j in range(m):
                 X_mini = self.X_train[:, j].reshape(-1, 1)
                 y_mini = self.y_train[:, j].reshape(-1, 1)
+                self.forward(X_mini)
                 self.backpropagation(X_mini, y_mini)
                 self.update_weights(learning_rate, momentum, ada_grad)
                 cost += self.calculate_cost(X_mini, y_mini)
             print("Cost :", cost/m)
-
 
 
 def make_one_hot(y):
