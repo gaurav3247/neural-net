@@ -192,15 +192,18 @@ class NeuralNetwork:
                 self.update_weights(learning_rate, momentum, ada_grad)
                 print("Cost :", self.calculate_cost(X_mini, y_mini))
 
-    def sgd(self, learning_rate, num_iterations, batch_size=100):
+    def sgd(self, learning_rate, num_iterations):
+        m = self.X_train.shape[1]
+
         for i in range(num_iterations):
-            print("Iterarion: ", i+1)
-            for j in range(0, self.X_train.shape[1], batch_size):
-                X_batch = self.X_train[:, j: j+batch_size]
-                y_batch = self.y_train[:, j: j+batch_size]
-                self.forward(X_batch)
-                self.backpropagation(y_batch)
-                self.update_weights(learning_rate)
+            print("Iteration: ", i+1)
+            for j in range(m):
+                X_mini = self.X_train[:, j].reshape(-1, 1)
+                y_mini = self.y_train[:, j].reshape(-1, 1)
+                self.forward(X_mini)
+                self.backpropagation(X_mini, y_mini)
+                self.update_weights(learning_rate, 0, 0)
+                print("Cost :", self.calculate_cost(X_mini, y_mini))
 
 
 def make_one_hot(y):
@@ -209,19 +212,6 @@ def make_one_hot(y):
     return one_hot.T
 
 if __name__ == '__main__':
-    # X_train_data = [[1, 2, 3, 2.5],
-    #            [2.0, 5.0, -1.0, 2.0],
-    #            [-1.5, 2.7, 3.3, -0.8]]
-
-    # X_train = np.array(X_train_data)
-    # y_train_ = np.array([2, 8, 5, 1]).T
-    # y_train = make_one_hot(y_train_)
-
-    # nn = NeuralNetwork([ReLULayer(3, 2)], 2)
-    # nn.assign_training_data(X_train, y_train)
-
-    # nn.train_model('gradient descent', 0.01)
-    
     data = pd.read_csv('./emnist-mnist-train.csv', header=None)
     data_arr = np.array(data)
     np.random.shuffle(data_arr)
