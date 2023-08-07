@@ -20,12 +20,6 @@ class HiddenLayer:
         self.best_weights = self.weights
         self.best_biases = self.biases
 
-    def change_weights(self, new_weights, new_biases):
-        print("Changing weights")
-        self.best_weights = new_weights
-        self.best_biases = new_biases
-        print(self.best_weights, self.best_biases)
-
     def activation_function(self, x):
         return x
 
