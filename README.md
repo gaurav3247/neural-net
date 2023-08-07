@@ -28,6 +28,7 @@ Training parameters-
 - ada_grad: specifies decay parameter for RMSProp optimizer (default is 0)
 - adam: specifies whether to use Adam optimizer or not (default is False)
 - verbose: specifies verbosity (default is True)
+
 Example:
 
 ```nn.train_mode('gradient descent', num_iterations=100, learning_rate=0.01, momentum=0.9, ada_grad=0.999, adam=True, verbose=False)```
