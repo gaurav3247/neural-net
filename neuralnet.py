@@ -16,6 +16,8 @@ class HiddenLayer:
         self.dA, self.dZ = None, None
         self.mt_w, self.mt_b = 0, 0
         self.vt_w, self.vt_b = 0, 0
+        self.vt_w_corrected, self.vt_b_corrected = 0, 0
+        self.mt_w_corrected, self.mt_b_corrected = 0, 0
         self.best_weights = self.weights
         self.best_biases = self.biases
 
@@ -137,34 +139,34 @@ class NeuralNetwork:
     def update_weights(self, learning_rate, beta_1, beta_2, adam, t):
         epsilon = 10 ** -8
         for layer in self.hidden_layers:
-            mt_w_ = beta_1 * layer.mt_w + (1 - beta_1) * layer.dW
-            mt_b_ = beta_1 * layer.mt_b + (1 - beta_1) * layer.dB
-            vt_w_ = beta_2 * layer.vt_w + (1 - beta_2) * np.square(layer.dW)
-            vt_b_ = beta_2 * layer.vt_b + (1 - beta_2) * np.square(layer.dB)
+            layer.mt_w = beta_1 * layer.mt_w + (1 - beta_1) * layer.dW
+            layer.mt_b = beta_1 * layer.mt_b + (1 - beta_1) * layer.dB
+            layer.vt_w = beta_2 * layer.vt_w + (1 - beta_2) * np.square(layer.dW)
+            layer.vt_b = beta_2 * layer.vt_b + (1 - beta_2) * np.square(layer.dB)
 
-            layer.vt_w, layer.vt_b = vt_w_, vt_b_
-            layer.mt_w, layer.mt_b = mt_w_, mt_b_
+            layer.vt_w_corrected, layer.vt_b_corrected = layer.vt_w/(1-beta_2 ** t), layer.vt_b/(1-beta_2 ** t)
+            layer.mt_w_corrected, layer.mt_b_corrected = layer.mt_w/(1-beta_1 ** t), layer.mt_b/(1-beta_1 ** t)
 
             layer.weights -= learning_rate * layer.mt_w / (np.sqrt(layer.vt_w) + epsilon)
             layer.biases -= learning_rate * layer.mt_b / (np.sqrt(layer.vt_b) + epsilon)
 
-    def train_model(self, training_type, num_iterations, learning_rate=0.01, momentum=0, ada_grad=0, adam=False):
+    def train_model(self, training_type, num_iterations, learning_rate=0.01, momentum=0, ada_grad=0, adam=False, verbose=True):
         print("Training using", training_type)
         print("Learning rate: ", learning_rate)
         print("Number of iterations: ", num_iterations)
         print("Momentum: ", momentum)
         time.sleep(2)
         if training_type == 'gradient descent':
-            self.gradient_descent(learning_rate, num_iterations, momentum, ada_grad, adam)
+            self.gradient_descent(learning_rate, num_iterations, momentum, ada_grad, adam, verbose)
         elif training_type == 'sgd':
-            self.sgd(learning_rate, num_iterations, momentum, ada_grad, adam)
+            self.sgd(learning_rate, num_iterations, momentum, ada_grad, adam, verbose)
         elif training_type == 'mini batch':
             batch_size = int(input("Enter batch size: "))
-            self.mini_batch_gd(learning_rate, num_iterations, batch_size, momentum, ada_grad, adam)
+            self.mini_batch_gd(learning_rate, num_iterations, batch_size, momentum, ada_grad, adam, verbose)
+        print("------------------Training complete------------------")
         y_hat = self.forward(self.X_train)
         final_cost = self.calculate_cost(y_hat, self.y_train)
-        print("Final cost: ", final_cost)
-        print("------------------Training complete------------------")
+        print("Minimum cost: ", final_cost)
         acc = self.calculate_accuracy(y_hat, self.y_train)
         print(f"Training accuracy: {round(acc*100, 2)}%")
 
@@ -189,11 +191,11 @@ class NeuralNetwork:
 
         return mini_batches
 
-    def gradient_descent(self, learning_rate, num_iterations, momentum, ada_grad, adam):
+    def gradient_descent(self, learning_rate, num_iterations, momentum, ada_grad, adam, verbose):
         min_cost = math.inf
         min_iteration = 0
         for i in range(num_iterations):
-                print("Iteration: ", i+1)
+                print(f'{verbose*f"Iteration: {i+1}"}', end=verbose*'\n')
                 y_hat = self.forward(self.X_train)
                 cost_ = self.calculate_cost(y_hat, self.y_train)
                 if cost_ < min_cost:
@@ -203,42 +205,55 @@ class NeuralNetwork:
                         layer.best_weights = layer.weights.copy()
                         layer.best_biases = layer.biases.copy()
                 self.backpropagation(self.X_train, self.y_train, y_hat)
+                
                 self.update_weights(learning_rate, momentum, ada_grad, adam, i+1)
-                print("Cost :", cost_)
+                print(f'{verbose*f"Cost: {cost_}"}', end=verbose*'\n')
 
-        print("Minimum cost: ", min_cost)
-        print("Minimum cost at iteration: ", min_iteration)
+        # print("Minimum cost: ", min_cost)
+        # print("Minimum cost at iteration: ", min_iteration)
         for layer in self.hidden_layers:
             layer.weights = layer.best_weights
             layer.biases = layer.best_biases
 
-    def mini_batch_gd(self, learning_rate, num_iterations, batch_size, momentum, ada_grad, adam):
+    def mini_batch_gd(self, learning_rate, num_iterations, batch_size, momentum, ada_grad, adam, verbose):
+        min_cost = math.inf
         for i in range(num_iterations):
-            print("Iteration: ", i+1)
-            cost = 0
+            print(f'{verbose*f"Iteration: {i+1}"}', end=verbose*'\n')
+            cost_ = 0
             mini_batches = self.make_mini_batches(self.X_train, self.y_train, batch_size)
             for mini_batch in mini_batches:
                 X_mini, y_mini = mini_batch
                 y_hat = self.forward(X_mini)
-                self.backpropagation(X_mini, y_mini)
+                self.backpropagation(X_mini, y_mini, y_hat)
                 self.update_weights(learning_rate, momentum, ada_grad, adam, i+1)
-                cost += self.calculate_cost(y_hat, y_mini)
-            print("Cost :", cost / batch_size)
+                cost_ += self.calculate_cost(y_hat, y_mini)
+            print(cost_)
+            if (cost_ / batch_size) < min_cost:
+                min_cost = cost_ / batch_size
+                for layer in self.hidden_layers:
+                    layer.best_weights = layer.weights.copy()
+                    layer.best_biases = layer.biases.copy()
+            print(f'{verbose*f"Cost: {cost_/batch_size}"}', end=verbose*'\n')
 
-    def sgd(self, learning_rate, num_iterations, momentum, ada_grad, adam):
+        for layer in self.hidden_layers:
+            layer.weights = layer.best_weights
+            layer.biases = layer.best_biases
+
+
+    def sgd(self, learning_rate, num_iterations, momentum, ada_grad, adam, verbose):
         m = self.X_train.shape[1]
 
         for i in range(num_iterations):
             print("Iteration: ", i+1)
-            cost = 0
+            cost_ = 0
             for j in range(m):
                 X_mini = self.X_train[:, j].reshape(-1, 1)
                 y_mini = self.y_train[:, j].reshape(-1, 1)
                 y_hat = self.forward(X_mini)
                 self.backpropagation(X_mini, y_mini)
                 self.update_weights(learning_rate, momentum, ada_grad, adam, i+1)
-                cost += self.calculate_cost(y_hat, y_mini)
-            print("Cost :", cost / m)
+                cost_ += self.calculate_cost(y_hat, y_mini)
+            print("Cost :", cost_ / m)
 
 
 def make_one_hot(y):

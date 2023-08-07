@@ -8,7 +8,7 @@ Optimization techniques already implemented-
 
 Optimization techniques to be implemented-
 - NAG
-- ADAM
+- Adam
 
 Initialize neural network by providing list of Hidden Layer objects for all the hidden layers and number of clases in classification problem.
 
