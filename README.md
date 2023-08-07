@@ -16,6 +16,7 @@ Example:
 ```nn = NeuralNetwork([HiddenLayer(100, 784, 'relu'), HiddenLayer(10, 100, 'softmax')], num_classes=10)```
 
 Assign training data using the following function-
+
 ```nn.assign_training_data(X_train, y_train)```
 
 Train model on training data-
@@ -28,4 +29,5 @@ Training parameters-
 - adam: specifies whether to use Adam optimizer or not (default is False)
 - verbose: specifies verbosity (default is True)
 Example:
+
 ```nn.train_mode('gradient descent', num_iterations=100, learning_rate=0.01, momentum=0.9, ada_grad=0.999, adam=True, verbose=False)```
