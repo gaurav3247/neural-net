@@ -3,7 +3,6 @@ import time
 from typing import List
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
 
 file = open('best_weights.txt', 'w') #File to store the best weights
 class HiddenLayer:
@@ -122,7 +121,7 @@ class NeuralNetwork:
         j = len(self.hidden_layers)
 
         self.hidden_layers[j-1].dZ = y_hat - y
-        self.hidden_layers[j-1].dW = 1/m * np.dot(self.hidden_layers[j-1].dZ, self.hidden_layers[j-1].A.T)
+        self.hidden_layers[j-1].dW = 1/m * np.dot(self.hidden_layers[j-1].dZ, self.hidden_layers[j-2].A.T)
         self.hidden_layers[j-1].dB = 1/m * np.sum(self.hidden_layers[j-1].dZ, axis=1, keepdims=True)
         self.hidden_layers[j-2].dA = np.dot(self.hidden_layers[j-1].weights.T, self.hidden_layers[j-1].dZ)
 
@@ -143,18 +142,22 @@ class NeuralNetwork:
             layer.mt_b = beta_1 * layer.mt_b + (1 - beta_1) * layer.dB
             layer.vt_w = beta_2 * layer.vt_w + (1 - beta_2) * np.square(layer.dW)
             layer.vt_b = beta_2 * layer.vt_b + (1 - beta_2) * np.square(layer.dB)
-
             layer.vt_w_corrected, layer.vt_b_corrected = layer.vt_w/(1-beta_2 ** t), layer.vt_b/(1-beta_2 ** t)
             layer.mt_w_corrected, layer.mt_b_corrected = layer.mt_w/(1-beta_1 ** t), layer.mt_b/(1-beta_1 ** t)
-
-            layer.weights -= learning_rate * layer.mt_w / (np.sqrt(layer.vt_w) + epsilon)
-            layer.biases -= learning_rate * layer.mt_b / (np.sqrt(layer.vt_b) + epsilon)
+            if adam:
+                layer.weights -= learning_rate * layer.mt_w / (np.sqrt(layer.vt_w) + epsilon)
+                layer.biases -= learning_rate * layer.mt_b / (np.sqrt(layer.vt_b) + epsilon)
+            else:
+                layer.weights -= learning_rate * layer.dW
+                layer.biases -= learning_rate * layer.dB
 
     def train_model(self, training_type, num_iterations, learning_rate=0.01, momentum=0, ada_grad=0, adam=False, verbose=True):
         print("Training using", training_type)
-        print("Learning rate: ", learning_rate)
         print("Number of iterations: ", num_iterations)
+        print("Learning rate: ", learning_rate)
         print("Momentum: ", momentum)
+        print("AdaGrad: ", ada_grad)
+        print("Adam: ", adam)
         time.sleep(2)
         if training_type == 'gradient descent':
             self.gradient_descent(learning_rate, num_iterations, momentum, ada_grad, adam, verbose)
@@ -209,8 +212,6 @@ class NeuralNetwork:
                 self.update_weights(learning_rate, momentum, ada_grad, adam, i+1)
                 print(f'{verbose*f"Cost: {cost_}"}', end=verbose*'\n')
 
-        # print("Minimum cost: ", min_cost)
-        # print("Minimum cost at iteration: ", min_iteration)
         for layer in self.hidden_layers:
             layer.weights = layer.best_weights
             layer.biases = layer.best_biases
