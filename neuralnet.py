@@ -1,10 +1,11 @@
 import math
+import time
 from typing import List
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-
+file = open('best_weights.txt', 'w') #File to store the best weights
 class HiddenLayer:
     def __init__(self, num_inputs, num_neurons):
         self.weights = np.random.randn(num_neurons, num_inputs) * 0.01
@@ -15,6 +16,14 @@ class HiddenLayer:
         self.dA, self.dZ = None, None
         self.mt_w, self.mt_b = 0, 0
         self.vt_w, self.vt_b = 0, 0
+        self.best_weights = self.weights
+        self.best_biases = self.biases
+
+    def change_weights(self, new_weights, new_biases):
+        print("Changing weights")
+        self.best_weights = new_weights
+        self.best_biases = new_biases
+        print(self.best_weights, self.best_biases)
 
     def activation_function(self, x):
         return x
@@ -52,7 +61,7 @@ class OutputLayer(HiddenLayer):
 
     def softmax(self, x):
         return np.exp(x) / np.sum(np.exp(x), axis=0)
-        # shift_x = x - np.max(x)
+        # shift_x = x - np.max(x) # Numerically stable softmax
         # return np.exp(x) / np.sum(np.exp(shift_x), axis=0)
 
     def activation_function(self, x):
@@ -92,22 +101,25 @@ class NeuralNetwork:
             layer.calculate_outputs(X)
             X = layer.get_outputs()
 
-        self.y_hat = X
+        return X
 
     def get_outputs(self):
         return self.output
 
-    def calculate_cost(self, X, y):
-        m = X.shape[1]
-        total_loss = np.sum(y * np.log(self.y_hat))
+    def calculate_accuracy(self, y_hat, y_train):
+        return np.sum(y_hat.argmax(axis=0) == y_train.argmax(axis=0)) / y_train.shape[1]
+
+    def calculate_cost(self, y_hat, y_train):
+        m = y_train.shape[1]
+        total_loss = np.sum(y_train * np.log(y_hat))
         cost = -1/m * total_loss
         return cost
 
-    def backpropagation(self, X, y):
+    def backpropagation(self, X, y, y_hat):
         m = X.shape[1]
         j = len(self.hidden_layers)
 
-        self.hidden_layers[j-1].dZ = self.y_hat - y
+        self.hidden_layers[j-1].dZ = y_hat - y
         self.hidden_layers[j-1].dW = 1/m * np.dot(self.hidden_layers[j-1].dZ, self.hidden_layers[j-1].A.T)
         self.hidden_layers[j-1].dB = 1/m * np.sum(self.hidden_layers[j-1].dZ, axis=1, keepdims=True)
         self.hidden_layers[j-2].dA = np.dot(self.hidden_layers[j-1].weights.T, self.hidden_layers[j-1].dZ)
@@ -122,31 +134,39 @@ class NeuralNetwork:
         self.hidden_layers[0].dW = 1/m * np.dot(self.hidden_layers[0].dZ, X.T)
         self.hidden_layers[0].dB = 1/m * np.sum(self.hidden_layers[0].dZ, axis=1, keepdims=True)
 
-    def update_weights(self, learning_rate, beta_1, beta_2):
+    def update_weights(self, learning_rate, beta_1, beta_2, adam, t):
         epsilon = 10 ** -8
         for layer in self.hidden_layers:
-            # layer.vt_w = beta_2 * layer.vt_w + (1 - beta_2) * np.square(layer.dW)
-            # layer.vt_b = beta_2 * layer.vt_b + (1 - beta_2) * np.square(layer.dB)
-            layer.mt_w = beta_1 * layer.mt_w + learning_rate * layer.dW
-            layer.mt_b = beta_1 * layer.mt_b + learning_rate * layer.dB
+            mt_w_ = beta_1 * layer.mt_w + (1 - beta_1) * layer.dW
+            mt_b_ = beta_1 * layer.mt_b + (1 - beta_1) * layer.dB
+            vt_w_ = beta_2 * layer.vt_w + (1 - beta_2) * np.square(layer.dW)
+            vt_b_ = beta_2 * layer.vt_b + (1 - beta_2) * np.square(layer.dB)
 
-            layer.weights -= layer.mt_w
-            layer.biases -= layer.mt_b
-            # layer.weights -= learning_rate * layer.dW / (np.sqrt(layer.vt_w) + epsilon)
-            # layer.biases -= learning_rate * layer.dB / (np.sqrt(layer.vt_b) + epsilon)
+            layer.vt_w, layer.vt_b = vt_w_, vt_b_
+            layer.mt_w, layer.mt_b = mt_w_, mt_b_
 
-    def train_model(self, training_type, num_iterations, learning_rate=0.01, momentum=0, ada_grad=0):
+            layer.weights -= learning_rate * layer.mt_w / (np.sqrt(layer.vt_w) + epsilon)
+            layer.biases -= learning_rate * layer.mt_b / (np.sqrt(layer.vt_b) + epsilon)
+
+    def train_model(self, training_type, num_iterations, learning_rate=0.01, momentum=0, ada_grad=0, adam=False):
         print("Training using", training_type)
         print("Learning rate: ", learning_rate)
         print("Number of iterations: ", num_iterations)
         print("Momentum: ", momentum)
+        time.sleep(2)
         if training_type == 'gradient descent':
-            self.gradient_descent(learning_rate, num_iterations, momentum, ada_grad)
+            self.gradient_descent(learning_rate, num_iterations, momentum, ada_grad, adam)
         elif training_type == 'sgd':
-            self.sgd(learning_rate, num_iterations, momentum, ada_grad)
+            self.sgd(learning_rate, num_iterations, momentum, ada_grad, adam)
         elif training_type == 'mini batch':
             batch_size = int(input("Enter batch size: "))
-            self.mini_batch_gd(learning_rate, num_iterations, momentum, ada_grad, batch_size)
+            self.mini_batch_gd(learning_rate, num_iterations, batch_size, momentum, ada_grad, adam)
+        y_hat = self.forward(self.X_train)
+        final_cost = self.calculate_cost(y_hat, self.y_train)
+        print("Final cost: ", final_cost)
+        print("------------------Training complete------------------")
+        acc = self.calculate_accuracy(y_hat, self.y_train)
+        print(f"Training accuracy: {round(acc*100, 2)}%")
 
     def make_mini_batches(self, X, y, batch_size):
         m = X.shape[1]
@@ -169,30 +189,43 @@ class NeuralNetwork:
 
         return mini_batches
 
-    def gradient_descent(self, learning_rate, num_iterations, momentum, ada_grad):
-        v_t = 0
+    def gradient_descent(self, learning_rate, num_iterations, momentum, ada_grad, adam):
+        min_cost = math.inf
+        min_iteration = 0
         for i in range(num_iterations):
                 print("Iteration: ", i+1)
-                self.forward(self.X_train)
-                self.backpropagation(self.X_train, self.y_train)
-                self.update_weights(learning_rate, momentum, ada_grad)
-                print("Cost :", self.calculate_cost(self.X_train, self.y_train))
-        print("Final cost: ", self.calculate_cost(self.X_train, self.y_train))
+                y_hat = self.forward(self.X_train)
+                cost_ = self.calculate_cost(y_hat, self.y_train)
+                if cost_ < min_cost:
+                    min_cost = cost_
+                    min_iteration = i+1
+                    for layer in self.hidden_layers:
+                        layer.best_weights = layer.weights.copy()
+                        layer.best_biases = layer.biases.copy()
+                self.backpropagation(self.X_train, self.y_train, y_hat)
+                self.update_weights(learning_rate, momentum, ada_grad, adam, i+1)
+                print("Cost :", cost_)
 
-    def mini_batch_gd(self, learning_rate, num_iterations, momentum, ada_grad, batch_size=100):
-        m = self.X_train.shape[1]
+        print("Minimum cost: ", min_cost)
+        print("Minimum cost at iteration: ", min_iteration)
+        for layer in self.hidden_layers:
+            layer.weights = layer.best_weights
+            layer.biases = layer.best_biases
 
+    def mini_batch_gd(self, learning_rate, num_iterations, batch_size, momentum, ada_grad, adam):
         for i in range(num_iterations):
             print("Iteration: ", i+1)
+            cost = 0
             mini_batches = self.make_mini_batches(self.X_train, self.y_train, batch_size)
             for mini_batch in mini_batches:
                 X_mini, y_mini = mini_batch
-                self.forward(X_mini)
+                y_hat = self.forward(X_mini)
                 self.backpropagation(X_mini, y_mini)
-                self.update_weights(learning_rate, momentum, ada_grad)
-                print("Cost :", self.calculate_cost(X_mini, y_mini))
+                self.update_weights(learning_rate, momentum, ada_grad, adam, i+1)
+                cost += self.calculate_cost(y_hat, y_mini)
+            print("Cost :", cost / batch_size)
 
-    def sgd(self, learning_rate, num_iterations, momentum, ada_grad):
+    def sgd(self, learning_rate, num_iterations, momentum, ada_grad, adam):
         m = self.X_train.shape[1]
 
         for i in range(num_iterations):
@@ -201,38 +234,14 @@ class NeuralNetwork:
             for j in range(m):
                 X_mini = self.X_train[:, j].reshape(-1, 1)
                 y_mini = self.y_train[:, j].reshape(-1, 1)
-                self.forward(X_mini)
+                y_hat = self.forward(X_mini)
                 self.backpropagation(X_mini, y_mini)
-                self.update_weights(learning_rate, momentum, ada_grad)
-                cost += self.calculate_cost(X_mini, y_mini)
-            print("Cost :", cost/m)
+                self.update_weights(learning_rate, momentum, ada_grad, adam, i+1)
+                cost += self.calculate_cost(y_hat, y_mini)
+            print("Cost :", cost / m)
 
 
 def make_one_hot(y):
     one_hot = np.zeros((y.size, y.max()+1))
     one_hot[np.arange(y.size), y] = 1
     return one_hot.T
-
-if __name__ == '__main__':
-    data = pd.read_csv('./emnist-mnist-train.csv', header=None)
-    data_arr = np.array(data)
-    np.random.shuffle(data_arr)
-
-    X_train, X_test = data_arr[:20000].T, data_arr[20000: 30000].T
-    y_train_, y_test_ = np.reshape(X_train[0], (X_train[0].shape[0], 1)).T, np.reshape(X_test[0], (X_test[0].shape[0], 1)).T
-    y_train, y_test = make_one_hot(y_train_), make_one_hot(y_test_)
-    X_train, X_test = X_train[1:], X_test[1:]
-    print(X_train.shape)
-    nn = NeuralNetwork([ReLULayer(784, 10)], num_classes=10)
-    nn.assign_training_data(X_train, y_train)
-    nn.train_model('sgd', 10, 0.01, momentum=0.9, ada_grad=0.9)
-
-    nn.forward(X_test)
-    test_pred = nn.y_hat
-    print(test_pred[0].shape, y_test[0].shape)
-    print(test_pred[:10].max(axis=0))
-    print("Prediction: ", test_pred[:10].argmax(axis=0))
-    print("Actual: ", y_test[:10].argmax(axis=0))
-
-    acc = np.sum(test_pred.argmax(axis=0) == y_test.argmax(axis=0)) / y_test.shape[1]
-    print(f"Accuracy: {acc*100}%")
