@@ -70,7 +70,8 @@ class OutputLayer(HiddenLayer):
 
 
 class NeuralNetwork:
-    def __init__(self, hidden_layers: List[HiddenLayer], num_classes: int):
+
+    def __init__(self, hidden_layers: List[HiddenLayer], num_classes: int, loss='mse'):
         output_layer = OutputLayer(hidden_layers[-1].weights.shape[0], num_classes)
         hidden_layers.append(output_layer)
         self.hidden_layers = hidden_layers
@@ -78,6 +79,9 @@ class NeuralNetwork:
         self.X_train = None
         self.y_train = None
         self.y_hat = None
+
+        self.loss_dict = {'mse': self.mse_cost, 'binary ce': self.binary_ce_cost, 'categorical ce': self.categorical_ce_cost}
+        self.loss = self.loss_dict[loss]
 
     def assign_training_data(self, X_train, y_train, normalize=False):
         if normalize:
@@ -104,11 +108,26 @@ class NeuralNetwork:
     def calculate_accuracy(self, y_hat, y_train):
         return np.sum(y_hat.argmax(axis=0) == y_train.argmax(axis=0)) / y_train.shape[1]
 
-    def calculate_cost(self, y_hat, y_train):
+    def mse_cost(self, y_hat, y_train):
+        m = y_train.shape[1]
+        total_loss = np.sum(np.square(y_hat - y_train))
+        cost = 1 / (2 * m) * total_loss
+        return cost
+
+    def binary_ce_cost(self, y_hat, y_train):
+        m = y_train.shape[1]
+        total_loss = np.sum(y_train * np.log(y_hat) + (1 - y_train) * np.log(1 - y_hat))
+        cost = -1/m * total_loss
+        return cost
+
+    def categorical_ce_cost(self, y_hat, y_train):
         m = y_train.shape[1]
         total_loss = np.sum(y_train * np.log(y_hat))
         cost = -1/m * total_loss
         return cost
+
+    def calculate_cost(self, y_hat, y_train):
+        return self.loss(y_hat, y_train)
 
     def backpropagation(self, X, y, y_hat):
         m = X.shape[1]
@@ -141,6 +160,12 @@ class NeuralNetwork:
             if adam:
                 layer.weights -= learning_rate * layer.mt_w / (np.sqrt(layer.vt_w) + epsilon)
                 layer.biases -= learning_rate * layer.mt_b / (np.sqrt(layer.vt_b) + epsilon)
+            elif beta_2:
+                layer.weights -= learning_rate * layer.dW / (np.sqrt(layer.vt_w) + epsilon)
+                layer.biases -= learning_rate * layer.dB / (np.sqrt(layer.vt_b) + epsilon)
+            elif beta_1:
+                layer.weights -= learning_rate * layer.mt_w
+                layer.biases -= learning_rate * layer.mt_b
             else:
                 layer.weights -= learning_rate * layer.dW
                 layer.biases -= learning_rate * layer.dB
@@ -163,7 +188,7 @@ class NeuralNetwork:
         print("------------------Training complete------------------")
         y_hat = self.forward(self.X_train)
         final_cost = self.calculate_cost(y_hat, self.y_train)
-        print("Minimum cost: ", final_cost)
+        print("Final cost: ", final_cost)
         acc = self.calculate_accuracy(y_hat, self.y_train)
         print(f"Training accuracy: {round(acc*100, 2)}%")
 
@@ -206,12 +231,14 @@ class NeuralNetwork:
                 self.update_weights(learning_rate, momentum, ada_grad, adam, i+1)
                 print(f'{verbose*f"Cost: {cost_}"}', end=verbose*'\n')
 
+        print(f'Minimum cost at iteration {min_iteration}')
         for layer in self.hidden_layers:
             layer.weights = layer.best_weights
             layer.biases = layer.best_biases
 
     def mini_batch_gd(self, learning_rate, num_iterations, batch_size, momentum, ada_grad, adam, verbose):
         min_cost = math.inf
+        min_iteration = 0
         for i in range(num_iterations):
             print(f'{verbose*f"Iteration: {i+1}"}', end=verbose*'\n')
             cost_ = 0
@@ -222,14 +249,16 @@ class NeuralNetwork:
                 self.backpropagation(X_mini, y_mini, y_hat)
                 self.update_weights(learning_rate, momentum, ada_grad, adam, i+1)
                 cost_ += self.calculate_cost(y_hat, y_mini)
-            print(cost_)
+
             if (cost_ / batch_size) < min_cost:
                 min_cost = cost_ / batch_size
+                min_iteration = i+1
                 for layer in self.hidden_layers:
                     layer.best_weights = layer.weights.copy()
                     layer.best_biases = layer.biases.copy()
             print(f'{verbose*f"Cost: {cost_/batch_size}"}', end=verbose*'\n')
 
+        print(f'Minimum cost at iteration {min_iteration}')
         for layer in self.hidden_layers:
             layer.weights = layer.best_weights
             layer.biases = layer.best_biases
