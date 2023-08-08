@@ -10,10 +10,15 @@ Optimization techniques already implemented-
 Optimization techniques to be implemented-
 - NAG
 
-Initialize neural network by providing list of Hidden Layer objects for all the hidden layers and number of classes. The neural network automatically adds a softmax or sigmoid output layer depending on number of classes.
+Loss functions:
+- 'mse': mean squared error
+- 'binary ce': binary cross entropy loss
+- 'categorical ce': categorical cross entropy loss
+
+Initialize neural network by providing list of Hidden Layer objects for all the hidden layers, the number of classes, and the loss function. The neural network automatically adds a softmax or sigmoid output layer depending on number of classes.
 
 Example:
-```nn = NeuralNetwork([ReLULayer(100, 784), SigmoidLayer(10, 100)], num_classes=10)```
+```nn = NeuralNetwork([ReLULayer(100, 784), SigmoidLayer(10, 100)], num_classes=10, loss='categorical ce')```
 
 Assign training data using the following function-
 
