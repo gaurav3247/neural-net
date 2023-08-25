@@ -207,8 +207,8 @@ class NeuralNetwork:
             layer.vt_w_corrected, layer.vt_b_corrected = layer.vt_w/(1-beta_2 ** t), layer.vt_b/(1-beta_2 ** t)
             layer.mt_w_corrected, layer.mt_b_corrected = layer.mt_w/(1-beta_1 ** t), layer.mt_b/(1-beta_1 ** t)
             if adam:
-                layer.weights -= learning_rate * layer.mt_w / (np.sqrt(layer.vt_w) + epsilon)
-                layer.biases -= learning_rate * layer.mt_b / (np.sqrt(layer.vt_b) + epsilon)
+                layer.weights -= learning_rate * layer.mt_w_corrected / (np.sqrt(layer.vt_w_corrected) + epsilon)
+                layer.biases -= learning_rate * layer.mt_b_corrected / (np.sqrt(layer.vt_b_corrected) + epsilon)
             elif beta_2:
                 layer.weights -= learning_rate * layer.dW / (np.sqrt(layer.vt_w) + epsilon)
                 layer.biases -= learning_rate * layer.dB / (np.sqrt(layer.vt_b) + epsilon)
