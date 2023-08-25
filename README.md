@@ -29,6 +29,7 @@ Training parameters-
 - training_type: specifies which training algorithm to use; 'gradient descent', 'mini batch', or 'sgd'
 - num_iterations: specifies number of iterations to run training algorithm for
 - learning_rate: specifies learning rate (default is 0.01)
+- batch_size: specifies batch size for mini batch gradient descent (default is 100)
 - momentum: specifies decay parameter for momentum optimization (default is 0)
 - ada_grad: specifies decay parameter for RMSProp optimizer (default is 0)
 - adam: specifies whether to use Adam optimizer or not (default is False)
@@ -36,4 +37,9 @@ Training parameters-
 
 Example:
 
-```nn.train_mode('gradient descent', num_iterations=100, learning_rate=0.01, momentum=0.9, ada_grad=0.999, adam=True, verbose=False)```
+```nn.train_mode('gradient descent', num_iterations=100, learning_rate=0.01, batch_size=32, momentum=0.9, ada_grad=0.999, adam=True, verbose=False)```
+
+Making predictions: Use the forward method in NeuralNetwork class to make predictions on test data. The forward method returns the predictediction for each test example.
+
+Example:
+```y_pred = nn.forward(X_test)```

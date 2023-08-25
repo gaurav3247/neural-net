@@ -4,11 +4,11 @@ from typing import List
 import numpy as np
 import matplotlib.pyplot as plt
 
-file = open('best_weights.txt', 'w') #File to store the best weights
 class HiddenLayer:
     def __init__(self, num_inputs, num_neurons, activation='relu', dropout=0.0):
-        function_dict = {'relu': self.relu_activation, 'sigmoid': self.sigmoid_activation, 'linear': self.linear_activation, 'softmax': self.softmax_activation}
-        derivative_dict = {'relu': self.relu_derivative, 'sigmoid': self.sigmoid_derivative, 'linear': self.linear_derivative, 'softmax': self.sigmoid_derivative}
+        self.layer_type = activation
+        function_dict = {'relu': self.relu_activation, 'sigmoid': self.sigmoid_activation, 'linear': self.linear_activation, 'tanh': self.tanh_activation, 'softmax': self.softmax_activation}
+        derivative_dict = {'relu': self.relu_derivative, 'sigmoid': self.sigmoid_derivative, 'linear': self.linear_derivative, 'tanh': self.tanh_derivative, 'softmax': self.sigmoid_derivative}
         self.activation = function_dict[activation]
         self.activation_derivative = derivative_dict[activation]
         self.weights = np.random.randn(num_neurons, num_inputs) * 0.01
@@ -55,6 +55,12 @@ class HiddenLayer:
     def relu_derivative(self, x):
         return np.where(x > 0, 1, 0)
 
+    def tanh_activation(self, x):
+        return np.tanh(x)
+
+    def tanh_derivative(self, x):
+        return 1 - np.tanh(x) ** 2
+
     def calculate_outputs(self, X):
         self.z = np.dot(self.weights, X) + self.biases
         self.A = self.activation_function(self.z)
@@ -85,6 +91,17 @@ class NeuralNetwork:
 
         self.loss_dict = {'mse': self.mse_cost, 'binary ce': self.binary_ce_cost, 'categorical ce': self.categorical_ce_cost}
         self.loss = self.loss_dict[loss]
+
+    def add_layer(self, layer):
+        self.layers.insert(-1, layer)
+
+    def save_weights(self, filename='best_weights.txt'):
+        file = open(filename, 'w') #File to store the best weights
+        for layer in self.layers:
+            file.write(layer.layer_type + ' Layer' + '\n')
+            file.write(str(layer.weights) + '\n')
+            file.write(str(layer.biases) + '\n\n')
+        file.close()
 
     def assign_training_data(self, X_train, y_train, standardize=False, normalize=False):
         if standardize:
@@ -203,12 +220,13 @@ class NeuralNetwork:
                 layer.biases -= learning_rate * layer.dB
 
     def train_model(self, training_type, num_iterations, learning_rate=0.01, batch_size=100, momentum=0, ada_grad=0, adam=False, verbose=True):
-        print("Training using", training_type)
-        print("Number of iterations: ", num_iterations)
-        print("Learning rate: ", learning_rate)
-        print("Momentum: ", momentum)
-        print("AdaGrad: ", ada_grad)
-        print("Adam: ", adam)
+        if verbose > 0:
+            print("Training using", training_type)
+            print("Number of iterations: ", num_iterations)
+            print("Learning rate: ", learning_rate)
+            print("Momentum: ", momentum)
+            print("AdaGrad: ", ada_grad)
+            print("Adam: ", adam)
         time.sleep(2)
         if training_type == 'gradient descent':
             self.gradient_descent(learning_rate, num_iterations, momentum, ada_grad, adam, verbose)
@@ -263,7 +281,7 @@ class NeuralNetwork:
                 self.update_weights(learning_rate, momentum, ada_grad, adam, i+1)
                 print(f'{verbose*f"Cost: {round(cost_, 5)}"}', end=verbose*'\n')
 
-        print(f'Minimum cost at iteration {min_iteration}')
+        print(f'{verbose*f"Minimum cost at iteration {min_iteration}"}', end=verbose*'\n')
         for layer in self.layers:
             layer.weights = layer.best_weights
             layer.biases = layer.best_biases
