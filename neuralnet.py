@@ -20,8 +20,6 @@ class HiddenLayer:
         self.dA, self.dZ = None, None
         self.mt_w, self.mt_b = 0, 0
         self.vt_w, self.vt_b = 0, 0
-        self.vt_w_corrected, self.vt_b_corrected = 0, 0
-        self.mt_w_corrected, self.mt_b_corrected = 0, 0
         self.best_weights = self.weights
         self.best_biases = self.biases
         self.D = 1
@@ -204,11 +202,11 @@ class NeuralNetwork:
             layer.mt_b = beta_1 * layer.mt_b + (1 - beta_1) * layer.dB
             layer.vt_w = beta_2 * layer.vt_w + (1 - beta_2) * np.square(layer.dW)
             layer.vt_b = beta_2 * layer.vt_b + (1 - beta_2) * np.square(layer.dB)
-            layer.vt_w_corrected, layer.vt_b_corrected = layer.vt_w/(1-beta_2 ** t), layer.vt_b/(1-beta_2 ** t)
-            layer.mt_w_corrected, layer.mt_b_corrected = layer.mt_w/(1-beta_1 ** t), layer.mt_b/(1-beta_1 ** t)
+            vt_w_corrected, vt_b_corrected = layer.vt_w/(1-beta_2 ** t), layer.vt_b/(1-beta_2 ** t)
+            mt_w_corrected, mt_b_corrected = layer.mt_w/(1-beta_1 ** t), layer.mt_b/(1-beta_1 ** t)
             if adam:
-                layer.weights -= learning_rate * layer.mt_w_corrected / (np.sqrt(layer.vt_w_corrected) + epsilon)
-                layer.biases -= learning_rate * layer.mt_b_corrected / (np.sqrt(layer.vt_b_corrected) + epsilon)
+                layer.weights -= learning_rate * mt_w_corrected / (np.sqrt(vt_w_corrected) + epsilon)
+                layer.biases -= learning_rate * mt_b_corrected / (np.sqrt(vt_b_corrected) + epsilon)
             elif beta_2:
                 layer.weights -= learning_rate * layer.dW / (np.sqrt(layer.vt_w) + epsilon)
                 layer.biases -= learning_rate * layer.dB / (np.sqrt(layer.vt_b) + epsilon)
