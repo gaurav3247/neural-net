@@ -1,4 +1,4 @@
-Implementation of a Neural Network in Python
+Implementation of a Neural Network framework in Python
 
 Optimization techniques already implemented-
 - SGD (Stochastic gradient descent)
