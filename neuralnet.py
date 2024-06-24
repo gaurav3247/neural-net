@@ -174,7 +174,12 @@ class NeuralNetwork:
         m = X.shape[1]
         j = len(self.layers)
 
-        self.layers[j-1].dZ = y_hat - y
+        if self.loss == self.mse_cost:
+            self.layers[j-1].dZ = y_hat - y
+        elif self.loss == self.binary_ce_cost:
+            self.layers[j-1].dZ = y_hat - y
+        elif self.loss == self.categorical_ce_cost:
+            self.layers[j-1].dZ = y / y_hat
         self.layers[j-1].dW = 1/m * np.dot(self.layers[j-1].dZ, self.layers[j-2].A.T)
         self.layers[j-1].dB = 1/m * np.sum(self.layers[j-1].dZ, axis=1, keepdims=True)
         self.layers[j-2].dA = np.dot(self.layers[j-1].weights.T, self.layers[j-1].dZ)
@@ -217,28 +222,36 @@ class NeuralNetwork:
                 layer.weights -= learning_rate * layer.dW
                 layer.biases -= learning_rate * layer.dB
 
-    def train_model(self, training_type, num_iterations, learning_rate=0.01, batch_size=100, momentum=0, ada_grad=0, adam=False, verbose=True):
-        if verbose > 0:
+    def train_model(self, training_type, num_iterations, learning_rate=0.01, batch_size=100, momentum=0, ada_grad=0, adam=False, verbose=True, plot=False):
+        if verbose:
             print("Training using", training_type)
             print("Number of iterations: ", num_iterations)
             print("Learning rate: ", learning_rate)
             print("Momentum: ", momentum)
             print("AdaGrad: ", ada_grad)
             print("Adam: ", adam)
+            print("Plotting: ", plot)
+            print("----------------------------------------------------")
         time.sleep(2)
         if training_type == 'gradient descent':
-            self.gradient_descent(learning_rate, num_iterations, momentum, ada_grad, adam, verbose)
+            costs = self.gradient_descent(learning_rate, num_iterations, momentum, ada_grad, adam, verbose, plot)
         elif training_type == 'sgd':
-            self.sgd(learning_rate, num_iterations, momentum, ada_grad, adam, verbose)
+            costs = self.sgd(learning_rate, num_iterations, momentum, ada_grad, adam, verbose, plot)
         elif training_type == 'mini batch':
-            self.mini_batch_gd(learning_rate, num_iterations, batch_size, momentum, ada_grad, adam, verbose)
+            costs = self.mini_batch_gd(learning_rate, num_iterations, batch_size, momentum, ada_grad, adam, verbose, plot)
         print("------------------Training complete------------------")
+        if plot:
+            plt.scatter(range(num_iterations), costs)
+            plt.title("Cost vs. Iterations")
+            plt.ylabel('Cost')
+            plt.xlabel('Iterations')
         y_hat = self.forward(self.X_train)
         final_cost = self.calculate_cost(y_hat, self.y_train)
         print("Final cost: ", round(final_cost, 5))
         acc = self.calculate_accuracy(y_hat, self.y_train)
         print(f"Training accuracy: {round(acc*100, 2)}%")
         print("----------------------------------------------------")
+        plt.show()
 
     def make_mini_batches(self, X, y, batch_size):
         m = X.shape[1]
@@ -261,13 +274,16 @@ class NeuralNetwork:
 
         return mini_batches
 
-    def gradient_descent(self, learning_rate, num_iterations, momentum, ada_grad, adam, verbose):
+    def gradient_descent(self, learning_rate, num_iterations, momentum, ada_grad, adam, verbose, plot):
         min_cost = math.inf
         min_iteration = 0
+        costs = []
         for i in range(num_iterations):
                 print(f'{verbose*f"Iteration: {i+1}"}', end=verbose*'\n')
                 y_hat = self.forward(self.X_train)
                 cost_ = self.calculate_cost(y_hat, self.y_train)
+                if plot:
+                    costs.append(cost_)
                 if cost_ < min_cost:
                     min_cost = cost_
                     min_iteration = i+1
@@ -284,9 +300,12 @@ class NeuralNetwork:
             layer.weights = layer.best_weights
             layer.biases = layer.best_biases
 
-    def mini_batch_gd(self, learning_rate, num_iterations, batch_size, momentum, ada_grad, adam, verbose):
+        return costs
+
+    def mini_batch_gd(self, learning_rate, num_iterations, batch_size, momentum, ada_grad, adam, verbose, plot):
         min_cost = math.inf
         min_iteration = 0
+        costs = []
         for i in range(num_iterations):
             print(f'{verbose*f"Iteration: {i+1}"}', end=verbose*'\n')
             cost_ = 0
@@ -298,6 +317,8 @@ class NeuralNetwork:
                 self.update_weights(learning_rate, momentum, ada_grad, adam, i+1)
                 cost_ += self.calculate_cost(y_hat, y_mini)
 
+            if plot:
+                costs.append(cost_ / batch_size)
             if (cost_ / batch_size) < min_cost:
                 min_cost = cost_ / batch_size
                 min_iteration = i+1
@@ -311,12 +332,13 @@ class NeuralNetwork:
             layer.weights = layer.best_weights
             layer.biases = layer.best_biases
 
+        return costs
 
-    def sgd(self, learning_rate, num_iterations, momentum, ada_grad, adam, verbose):
+    def sgd(self, learning_rate, num_iterations, momentum, ada_grad, adam, verbose, plot):
         m = self.X_train.shape[1]
         min_cost = math.inf
         min_iteration = 0
-
+        costs = []
         for i in range(num_iterations):
             print(f'{verbose*f"Iteration: {i+1}"}', end=verbose*'\n')
             cost_ = 0
@@ -328,6 +350,8 @@ class NeuralNetwork:
                 self.update_weights(learning_rate, momentum, ada_grad, adam, i+1)
                 cost_ += self.calculate_cost(y_hat, y_mini)
 
+            if plot:
+                costs.append(cost_ / m)
             if (cost_ / m) < min_cost:
                 min_cost = cost_ / m
                 min_iteration = i+1
@@ -340,6 +364,8 @@ class NeuralNetwork:
         for layer in self.layers:
             layer.weights = layer.best_weights
             layer.biases = layer.best_biases
+
+        return costs
 
 def make_one_hot(y):
     one_hot = np.zeros((y.size, y.max()+1))
