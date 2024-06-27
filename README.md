@@ -40,3 +40,5 @@ Making predictions: Use the forward method in NeuralNetwork class to make predic
 
 Example:
 ```y_pred = nn.forward(X_test)```
+
+**Update: Added batch normalization and dropout options for training
