@@ -1,6 +1,6 @@
 Implementation of a Neural Network framework in Python
 
-Optimization techniques already implemented-
+Optimization techniques-
 - SGD (Stochastic gradient descent)
 - Mini batch gradient descent
 - Momentum
