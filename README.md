@@ -7,9 +7,6 @@ Optimization techniques already implemented-
 - RMSProp
 - Adam
 
-Optimization techniques to be implemented-
-- NAG
-
 Loss functions:
 - 'mse': mean squared error
 - 'binary ce': binary cross entropy loss
